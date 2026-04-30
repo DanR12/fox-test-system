@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Повний аудит FoxTest</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { margin: 0; padding: 0; overflow-x: hidden; }
+        .admin-container { max-width: 1200px; width: 95%; margin: 20px auto; box-sizing: border-box; }
+        
+        .search-box { 
+            background: white; padding: 20px; border-radius: 12px; 
+            margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
+            text-align: center; position: sticky; top: 10px; z-index: 100;
+        }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .stat-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); text-align: center; }
+        
+        .charts-container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 30px; display: none; }
+        .chart-box { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+
+        .table-wrapper { width: 100%; overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; min-width: 700px; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+        
+        .student-row { cursor: pointer; transition: background 0.2s; }
+        .student-row:hover { background: #f8fbff; }
+        .details-row { display: none; background: #fdfdfd; }
+        .details-container { padding: 20px; border-left: 5px solid #1a73e8; background: #f4f7f9; margin: 10px; border-radius: 0 8px 8px 0; }
+        
+        .q-line { padding: 10px 0; border-bottom: 1px dashed #ccc; }
+        .q-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .q-badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; color: white; font-weight: bold; }
+        .bg-success { background: #27ae60; }
+        .bg-error { background: #e74c3c; }
+        
+        .ans-compare { font-size: 13px; margin-left: 35px; color: #444; line-height: 1.5; }
+        .ans-correct { color: #27ae60; font-weight: bold; }
+        .time-tag { font-size: 12px; color: #777; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <button onclick="window.location.href='index.html'" class="secondary-btn" style="width: auto; margin-bottom: 15px;">🏠 На головну</button>
+        <h1>📊 Аналітичний центр</h1>
+
+        <div class="search-box">
+            <input type="text" id="filter-code" placeholder="ВВЕДІТЬ КОД ТЕСТУ" style="width: 200px; text-transform: uppercase; padding: 10px; border: 2px solid #1a73e8; border-radius: 6px;">
+            <button onclick="loadFullAnalytics()" class="primary-btn" style="width: auto; padding: 10px 25px; margin-left: 10px;">Аналізувати</button>
+        </div>
+
+        <div id="summary-stats" class="stats-grid" style="display: none;">
+            <div class="stat-card"> <p>👥 Студентів</p> <h2 id="total-students">0</h2> </div>
+            <div class="stat-card"> <p>🎯 Сер. бал</p> <h2 id="avg-score">0%</h2> </div>
+            <div class="stat-card"> <p>📝 Відповідей</p> <h2 id="total-logs">0</h2> </div>
+        </div>
+
+        <div id="charts-area" class="charts-container">
+            <div class="chart-box"> <canvas id="diffChart"></canvas> </div>
+            <div class="chart-box"> <canvas id="successChart"></canvas> </div>
+        </div>
+
+        <div id="results-block" style="display: none;">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ПІБ студента</th>
+                            <th>Бал (Прав/Всього)</th>
+                            <th>Успішність</th>
+                            <th>Остання активність</th>
+                            <th>Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody id="students-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let charts = {};
+
+        async function loadFullAnalytics() {
+            const code = document.getElementById('filter-code').value.trim().toUpperCase();
+            if (!code) return;
+
+            const res = await fetch('/api/analytics');
+            const data = await res.json();
+
+            const testLogs = data.logs.filter(l => l.testCode === code);
+            const testQuestions = data.questions.filter(q => q.category === code.toLowerCase());
+
+            if (testLogs.length === 0) return alert("Дані відсутні.");
+
+            document.getElementById('summary-stats').style.display = 'grid';
+            document.getElementById('charts-area').style.display = 'grid';
+            document.getElementById('results-block').style.display = 'block';
+
+            renderCharts(testLogs, testQuestions);
+            renderStudentTable(testLogs, data.questions);
+        }
+
+        function renderCharts(logs, questions) {
+            if (charts.diff) charts.diff.destroy();
+            if (charts.pie) charts.pie.destroy();
+
+            charts.diff = new Chart(document.getElementById('diffChart'), {
+                type: 'bar',
+                data: {
+                    labels: questions.map(q => q.text.substring(0, 15) + '...'),
+                    datasets: [{ label: 'Складність', data: questions.map(q => q.difficulty), backgroundColor: '#1a73e8' }]
+                },
+                options: { responsive: true, scales: { y: { beginAtZero: true, max: 1 } } }
+            });
+
+            const correctCount = logs.filter(l => l.isCorrect).length;
+            charts.pie = new Chart(document.getElementById('successChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Прав.', 'Пом.'],
+                    datasets: [{ data: [correctCount, logs.length - correctCount], backgroundColor: ['#27ae60', '#e74c3c'] }]
+                }
+            });
+
+            document.getElementById('total-logs').innerText = logs.length;
+            const uniqueS = [...new Set(logs.map(l => l.student))].length;
+            document.getElementById('total-students').innerText = uniqueS;
+            document.getElementById('avg-score').innerText = ((correctCount / logs.length) * 100).toFixed(0) + "%";
+        }
+
+        function renderStudentTable(logs, allQuestions) {
+            const tbody = document.getElementById('students-table-body');
+            tbody.innerHTML = "";
+
+            const students = {};
+            logs.forEach(log => {
+                if (!students[log.student]) {
+                    students[log.student] = { name: log.student, correct: 0, total: 0, date: log.timestamp, answers: [] };
+                }
+                students[log.student].total++;
+                if (log.isCorrect) students[log.student].correct++;
+                
+                const qObj = allQuestions.find(q => q.id == log.questionId);
+                students[log.student].answers.push({
+                    text: qObj ? qObj.text : "Питання видалено",
+                    correctAnswer: qObj ? qObj.correct_ans : "Невідомо",
+                    studentAnswer: log.answer || "---", // Тут ми показуємо, що відповів студент (якщо зберігаємо це)
+                    isCorrect: log.isCorrect,
+                    time: log.timeSpent
+                });
+            });
+
+            Object.values(students).forEach((s, i) => {
+                const rowId = `details-${i}`;
+                tbody.innerHTML += `
+                    <tr class="student-row" onclick="toggleRow('${rowId}')">
+                        <td><strong>${s.name}</strong></td>
+                        <td>${s.correct} / ${s.total}</td>
+                        <td>${((s.correct/s.total)*100).toFixed(0)}%</td>
+                        <td>${new Date(s.date).toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})}</td>
+                        <td style="color: #1a73e8;">🔍 Деталі</td>
+                    </tr>
+                    <tr id="${rowId}" class="details-row">
+                        <td colspan="5">
+                            <div class="details-container">
+                                ${s.answers.map(a => `
+                                    <div class="q-line">
+                                        <div class="q-header">
+                                            <span>
+                                                <span class="q-badge ${a.isCorrect ? 'bg-success' : 'bg-error'}">${a.isCorrect ? '✓' : '✗'}</span>
+                                                <b>${a.text}</b>
+                                            </span>
+                                            <span class="time-tag">⏱ ${a.time.toFixed(1)}с</span>
+                                        </div>
+                                        <div class="ans-compare">
+                                            ${!a.isCorrect ? `<div>Правильна відповідь: <span class="ans-correct">${a.correctAnswer}</span></div>` : ''}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function toggleRow(id) {
+            const el = document.getElementById(id);
+            const visible = el.style.display === 'table-row';
+            document.querySelectorAll('.details-row').forEach(r => r.style.display = 'none');
+            el.style.display = visible ? 'none' : 'table-row';
+        }
+    </script>
+</body>
+</html>

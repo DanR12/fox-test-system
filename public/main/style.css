@@ -1,0 +1,63 @@
+body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+.container { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 350px; }
+h1 { font-size: 22px; color: #1a73e8; margin-bottom: 30px; }
+.box { margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; text-align: center; font-size: 16px; }
+button { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+button:hover { background: #1557b0; }
+.secondary-btn { background: #5f6368; margin-top: 10px; }
+.secondary-btn:hover { background: #3c4043; }
+.error { color: #d93025; font-size: 14px; }
+.option-btn {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    margin: 10px 0;
+    background: white;
+    border: 2px solid #1a73e8;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: 0.3s;
+}
+.option-btn:hover {
+    background: #eef4ff;
+    transform: translateY(-2px);
+}
+.correct-radio {
+    width: 20px !important;
+    height: 20px !important;
+    flex-shrink: 0 !important; /* Не даємо їй стискатися */
+    cursor: pointer;
+    margin: 0 !important;
+}
+.opt-row button {
+    background: none !important;
+    border: none !important;
+    padding: 5px !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important; /* Не даємо їй стискатися */
+    font-size: 18px !important;
+    width: 30px !important;
+    height: 30px !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+.char-counter {
+    font-size: 11px;
+    color: #888;
+    text-align: right;
+    margin-top: -15px; /* Підтягуємо під поле вводу */
+    margin-bottom: 10px;
+    font-family: Arial, sans-serif;
+}
+
+/* Для варіантів у рядку робимо лічильник ще компактнішим */
+.opt-row .char-counter {
+    margin-top: 2px;
+    margin-bottom: 0;
+    position: absolute; /* Щоб не розсував рядки */
+    right: 5px;
+    bottom: -14px;
+}

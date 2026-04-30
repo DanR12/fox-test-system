@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Редагування тесту</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container" style="width: 550px;">
+        <h2>✏️ Редагування тесту: <span id="current-code"></span></h2>
+        <input type="text" id="t-title" placeholder="Назва тесту">
+        
+        <div id="q-list">
+            </div>
+
+        <button onclick="addQ()">+ Додати ще питання</button>
+        <button class="secondary-btn" style="background: #27ae60;" onclick="updateTest()">💾 Зберегти зміни</button>
+        <button class="secondary-btn" onclick="window.location.href='index.html'">Відміна</button>
+    </div>
+
+    <script>
+        if (localStorage.getItem('admin_authorized') !== 'true') {
+    alert("Доступ заборонено!");
+    window.location.href = 'index.html';
+}
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+
+        async function loadTestForEdit() {
+            document.getElementById('current-code').innerText = code;
+            const res = await fetch(`/api/questions/${code}`);
+            const data = await res.json();
+            
+            document.getElementById('t-title').value = data.title;
+            const container = document.getElementById('q-list');
+            
+            data.questions.forEach(q => {
+                // Отримуємо повну відповідь з сервера через новий маршрут або JS фокус
+                addQ(q.text, ""); // Для повноцінного редагування нам потрібні відповіді
+            });
+            alert("Увага: Впишіть правильні відповіді заново для підтвердження змін.");
+        }
+
+        function addQ(text = "", ans = "") {
+    // Створюємо унікальний ID для кожного блоку питання, щоб легко його видалити
+    const qId = 'q-' + Date.now() + Math.random().toString(36).substr(2, 9);
+    
+    const html = `
+        <div class="q-item" id="${qId}" style="margin-top:15px; border-top:1px dashed #ccc; padding-top:10px; position: relative;">
+            <button type="button" onclick="removeQ('${qId}')" 
+                style="position: absolute; right: 0; top: 10px; background: #e74c3c; width: 30px; padding: 5px; font-size: 12px;">
+                ❌
+            </button>
+            <label>Текст питання:</label>
+            <input type="text" class="q-t" placeholder="Питання" value="${text}">
+            <label>Правильна відповідь:</label>
+            <input type="text" class="q-a" placeholder="Правильна відповідь" value="${ans}">
+        </div>`;
+    
+    document.getElementById('q-list').insertAdjacentHTML('beforeend', html);
+}
+
+// Функція для видалення блоку питання з екрана
+function removeQ(id) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.remove();
+    }
+}
+
+        async function updateTest() {
+            const title = document.getElementById('t-title').value;
+            const qElements = document.getElementsByClassName('q-t');
+            const aElements = document.getElementsByClassName('q-a');
+            
+            let updatedQuestions = [];
+            for(let i=0; i<qElements.length; i++) {
+                updatedQuestions.push({ text: qElements[i].value, correct_ans: aElements[i].value });
+            }
+
+            const res = await fetch('/api/update-test', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ code, title, questions: updatedQuestions })
+            });
+
+            if (res.ok) {
+                alert("Дані успішно оновлено!");
+                window.location.href = "index.html";
+            }
+        }
+
+        loadTestForEdit();
+    </script>
+</body>
+</html>

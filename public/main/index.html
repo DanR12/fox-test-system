@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Система тестування</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Система аналізу тестування</h1>
+        
+        <div class="box student-box">
+    <h3>Для студентів</h3>
+    <input type="text" id="student-name" placeholder="Ваше Ім'я">
+    <input type="text" id="student-surname" placeholder="Ваше Прізвище">
+    
+    <input type="text" id="test-code" placeholder="Введіть код тесту (напр. DEMO)">
+    <button onclick="checkCode()">Увійти в тест</button>
+        </div>
+
+ <div class="box admin-box">
+    <h3>Для викладачів</h3>
+    <button class="secondary-btn" onclick="openCreator()">➕ Створити тест</button>
+    <button class="secondary-btn" style="background: #f39c12;" onclick="openEditor()">✏️ Редагувати тест</button>
+    <button class="secondary-btn" onclick="openAdmin()">📊 Аналітика</button>
+    <button class="secondary-btn" style="background: #c0392b;" onclick="deleteTest()">🗑️ Видалити тест</button>
+    <!-- Кнопка виходу -->
+    <button onclick="logoutAdmin()" style="margin-top: 15px; background: none; border: none; color: #888; cursor: pointer; text-decoration: underline; font-size: 12px;">
+        Вийти з режиму адміна
+    </button>
+</div>
+
+        <p id="msg" class="error"></p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

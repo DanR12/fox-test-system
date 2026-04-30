@@ -1,0 +1,215 @@
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+
+const app = express();
+const PORT = 3000;
+
+// Шляхи до баз даних
+const TESTS_FILE = path.join(__dirname, 'data_tests.json');
+const RESULTS_FILE = path.join(__dirname, 'data_results.json');
+
+const ADMIN_PASSWORD = "admin123";
+
+app.use(express.json());
+app.use(express.static('public/main'));
+
+// --- УНІВЕРСАЛЬНІ ФУНКЦІЇ ДЛЯ ФАЙЛІВ ---
+
+function loadFile(filePath, initialStructure) {
+    try {
+        if (!fs.existsSync(filePath)) {
+            fs.writeFileSync(filePath, JSON.stringify(initialStructure, null, 2), 'utf8');
+            return initialStructure;
+        }
+        return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    } catch (err) {
+        console.error(`Помилка читання ${path.basename(filePath)}:`, err);
+        return initialStructure;
+    }
+}
+
+function saveFile(filePath, data) {
+    try {
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+        console.log(`✅ Файл оновлено: ${path.basename(filePath)}`);
+    } catch (err) {
+        console.error(`❌ Помилка запису у ${path.basename(filePath)}:`, err);
+    }
+}
+
+// --- ГЕНЕРАЦІЯ УНІКАЛЬНОГО КОДУ ---
+
+function generateRandomCode(length = 6) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+// --- API МАРШРУТИ ---
+
+// 1. Отримати новий унікальний код для тесту
+app.get('/api/get-unique-code', (req, res) => {
+    const db = loadFile(TESTS_FILE, { availableTests: [], questions: [] });
+    let newCode;
+    let isUnique = false;
+
+    while (!isUnique) {
+        newCode = generateRandomCode();
+        if (!db.availableTests.some(t => t.code === newCode)) isUnique = true;
+    }
+    res.json({ code: newCode });
+});
+
+// 2. Вхід адміна
+app.post('/api/admin-login', (req, res) => {
+    if (req.body.password === ADMIN_PASSWORD) res.json({ success: true });
+    else res.status(401).json({ success: false });
+});
+
+// 3. Перевірка коду тесту
+app.get('/api/check-code/:code', (req, res) => {
+    const db = loadFile(TESTS_FILE, { availableTests: [], questions: [] });
+    const code = req.params.code.toUpperCase();
+    const test = db.availableTests.find(t => t.code === code);
+    res.json({ exists: !!test, title: test ? test.title : "" });
+});
+
+// 4. Створення тесту
+app.post('/api/create-test', (req, res) => {
+    const db = loadFile(TESTS_FILE, { availableTests: [], questions: [] });
+    const { code, title, initialQuestions } = req.body;
+    const category = code.toLowerCase();
+
+    db.availableTests.push({ code: code.toUpperCase(), title, category });
+
+    initialQuestions.forEach(q => {
+        db.questions.push({
+            id: Date.now() + Math.random(),
+            category: category,
+            text: q.text,
+            correct_ans: q.correct_ans,
+            options: q.options, // Масив рядків ["Варіант 1", "Варіант 2"...]
+            correct_ans: q.correct_ans, // Рядок, що збігається з одним із варіантів
+            difficulty: 0.5,
+            total_attempts: 0,
+            correct_attempts: 0
+        });
+    });
+
+    saveFile(TESTS_FILE, db);
+    res.json({ success: true });
+});
+
+// 5. Редагування тесту
+app.post('/api/update-test', (req, res) => {
+    const db = loadFile(TESTS_FILE, { availableTests: [], questions: [] });
+    const { code, title, questions } = req.body;
+    const cat = code.toLowerCase();
+
+    const test = db.availableTests.find(t => t.code === code.toUpperCase());
+    if (test) test.title = title;
+
+    db.questions = db.questions.filter(q => q.category !== cat);
+    questions.forEach(q => {
+        db.questions.push({
+            id: Date.now() + Math.random(),
+            category: cat,
+            text: q.text,
+            correct_ans: q.correct_ans,
+            difficulty: 0.5,
+            total_attempts: 0,
+            correct_attempts: 0
+        });
+    });
+
+    saveFile(TESTS_FILE, db);
+    res.json({ success: true });
+});
+
+// 6. Видалення тесту
+app.post('/api/delete-test', (req, res) => {
+    const { code, password } = req.body;
+    if (password !== ADMIN_PASSWORD) return res.status(401).json({ success: false });
+
+    const tDb = loadFile(TESTS_FILE, { availableTests: [], questions: [] });
+    const rDb = loadFile(RESULTS_FILE, { responseLogs: [] });
+
+    const cat = code.toLowerCase();
+    tDb.availableTests = tDb.availableTests.filter(t => t.code !== code.toUpperCase());
+    tDb.questions = tDb.questions.filter(q => q.category !== cat);
+    rDb.responseLogs = rDb.responseLogs.filter(l => l.testCode !== code.toUpperCase());
+
+    saveFile(TESTS_FILE, tDb);
+    saveFile(RESULTS_FILE, rDb);
+    res.json({ success: true });
+});
+
+// 7. Питання для студента
+app.get('/api/questions/:code', (req, res) => {
+    const db = loadFile(TESTS_FILE, { availableTests: [], questions: [] });
+    const test = db.availableTests.find(t => t.code === req.params.code.toUpperCase());
+    if (!test) return res.status(404).json({ error: "Не знайдено" });
+
+    const qList = db.questions.filter(q => q.category === test.category);
+    res.json({ title: test.title, questions: qList });
+});
+
+// 8. Обробка відповіді та Динамічна складність
+app.post('/api/submit-answer', (req, res) => {
+    const tDb = loadFile(TESTS_FILE, { availableTests: [], questions: [] });
+    const rDb = loadFile(RESULTS_FILE, { responseLogs: [] });
+    const { questionId, answer, timeSpent, student, testCode } = req.body;
+
+    const q = tDb.questions.find(item => item.id == questionId);
+    if (!q) return res.status(404).json({ error: "Питання зникло" });
+
+    const isCorrect = answer.trim().toLowerCase() === q.correct_ans.toLowerCase();
+
+    // Розрахунок складності
+    q.total_attempts++;
+    if (isCorrect) q.correct_attempts++;
+    q.difficulty = (1 - (q.correct_attempts / q.total_attempts)).toFixed(2);
+
+    // Запис у лог
+    rDb.responseLogs.push({
+        student: student || "Анонім",
+        testCode: testCode.toUpperCase(),
+        questionId: q.id,
+        isCorrect,
+        timeSpent: parseFloat(timeSpent) || 0,
+        timestamp: new Date()
+    });
+
+    saveFile(TESTS_FILE, tDb);
+    saveFile(RESULTS_FILE, rDb);
+    res.json({ success: isCorrect, newDifficulty: q.difficulty });
+});
+
+// 9. Аналітика
+app.get('/api/analytics', (req, res) => {
+    const tDb = loadFile(TESTS_FILE, { availableTests: [], questions: [] });
+    const rDb = loadFile(RESULTS_FILE, { responseLogs: [] });
+    res.json({
+        logs: rDb.responseLogs,
+        questions: tDb.questions.map(q => ({
+            id: q.id, // Додано цей рядок
+            text: q.text,
+            category: q.category,
+            difficulty: q.difficulty,
+            correct_ans: q.correct_ans,
+            stats: `${q.correct_attempts}/${q.total_attempts}`
+        }))
+    });
+});
+// Запуск
+app.listen(PORT, () => {
+    console.log(`-------------------------------------------`);
+    console.log(`🚀 СЕРВЕР ПРАЦЮЄ: http://localhost:${PORT}`);
+    console.log(`📂 ТЕСТИ: data_tests.json`);
+    console.log(`📂 РЕЗУЛЬТАТИ: data_results.json`);
+    console.log(`-------------------------------------------`);
+});

@@ -1,0 +1,4 @@
+node_modules/
+data_results.json
+data_tests.json
+.env
