@@ -154,28 +154,18 @@ app.get('/api/questions/:code', (req, res) => {
     const db = loadFile(TESTS_FILE, { availableTests: [], questions: [] });
 
     // 1. Шукаємо питання за категорією
-    const testQuestions = db.questions.filter(q => 
-        q.category && q.category.trim().toLowerCase() === code
-    );
+    const testQuestions = db.questions.filter(q => q.category.toLowerCase() === code);
 
     if (testQuestions.length === 0) {
-        console.log(`[DEBUG] Тест ${code} не знайдено в базі.`);
-        return res.status(404).json({ error: "Тест не знайдено" });
+        return res.status(404).json({ error: "Тест із таким кодом не містить питань або не існує" });
     }
 
     // 2. Шукаємо назву тесту (якщо її немає в availableTests, виведемо "Тест без назви")
     const testInfo = db.availableTests.find(t => t.code.toLowerCase() === code);
     const title = testInfo ? testInfo.title : "Тест: " + code;
-// 5. Намагаємося знайти гарну назву тесту
-    let testTitle = "Тест: " + code;
-    if (db.availableTests) {
-        const testInfo = db.availableTests.find(t => t.code.toLowerCase() === code);
-        if (testInfo) testTitle = testInfo.title;
-    }
 
-// 6. Відправляємо результат
     res.json({
-        title: testTitle,
+        title: title,
         questions: testQuestions
     });
 });

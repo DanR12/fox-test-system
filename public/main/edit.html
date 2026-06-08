@@ -2,95 +2,339 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>Редагування тесту</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редагування тесту — FoxTest</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Глобальні виправлення для скролу та фону (ідентично create.html) */
+        html, body {
+            height: auto !important;
+            overflow-y: auto !important;
+            background-color: #f4f7f9;
+            margin: 0;
+            padding: 0;
+        }
+
+        .edit-container { 
+            max-width: 850px; 
+            width: 95%;
+            margin: 40px auto; 
+            padding-bottom: 100px;
+        }
+        
+        .q-item { 
+            background: #fff; 
+            padding: 25px; 
+            border-radius: 15px; 
+            margin-bottom: 30px; 
+            border-left: 8px solid #9b59b6; 
+            box-shadow: 0 5px 20px rgba(0,0,0,0.07);
+            position: relative;
+        }
+
+        .remove-q-btn {
+            position: absolute; right: -15px; top: -15px;
+            background: #ff4d4d; color: white; border: none;
+            border-radius: 50%; width: 35px; height: 35px; cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        .options-box {
+            background: #fdfaff;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: 2px dashed #d1b3ff;
+        }
+
+        .opt-row {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            gap: 12px !important;
+            width: 100% !important;
+            margin-bottom: 15px !important;
+            flex-wrap: nowrap !important;
+        }
+
+        .opt-input-wrapper {
+            flex-grow: 1 !important;
+            position: relative;
+        }
+
+        .opt-input { 
+            width: 100% !important;
+            flex-grow: 1 !important;
+            min-width: 0 !important;
+            padding: 12px !important;
+            margin: 0 !important;
+            font-size: 16px !important;
+            border: 1px solid #ccc !important;
+            border-radius: 8px !important;
+            box-sizing: border-box !important;
+        }
+
+        .correct-radio {
+            width: 22px !important;
+            height: 22px !important;
+            flex-shrink: 0 !important;
+            cursor: pointer;
+            accent-color: #27ae60;
+        }
+
+        .delete-opt-btn {
+            background: none !important;
+            border: none !important;
+            cursor: pointer;
+            font-size: 20px;
+            flex-shrink: 0 !important;
+            padding: 5px;
+        }
+
+        .manual-ans-box {
+            background: #fff9e6; padding: 20px; border-radius: 10px;
+            border: 2px solid #ffeeba; margin-top: 15px;
+        }
+
+        .q-a-manual {
+            width: 100% !important;
+            font-size: 18px;
+            padding: 12px;
+            border: 2px solid #ffcc00;
+            border-radius: 8px;
+            margin-top: 10px;
+            box-sizing: border-box;
+        }
+
+        .char-counter {
+            font-size: 11px;
+            color: #888;
+            text-align: right;
+            margin-top: 2px;
+        }
+
+        .code-banner {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #f0f4ff; padding: 15px; border-radius: 10px;
+            border: 2px solid #1a73e8; margin-bottom: 25px;
+        }
+
+        .code-text { font-family: monospace; font-size: 24px; font-weight: bold; color: #1a73e8; }
+
+        .search-panel { 
+            background: white; padding: 30px; border-radius: 15px; 
+            text-align: center; border: 2px solid #9b59b6; margin-bottom: 30px;
+        }
+    </style>
 </head>
 <body>
-    <div class="container" style="width: 550px;">
-        <h2>✏️ Редагування тесту: <span id="current-code"></span></h2>
-        <input type="text" id="t-title" placeholder="Назва тесту">
-        
-        <div id="q-list">
+    <div class="container edit-container">
+        <button onclick="window.location.href='index.html'" class="secondary-btn" style="width:auto; margin-bottom:15px;">🏠 На головну</button>
+        <h2>✏️ Редагування тесту</h2>
+
+        <div id="search-section" class="search-panel">
+            <h3 style="margin-bottom: 15px;">Завантажити тест для змін</h3>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <input type="text" id="target-code" placeholder="Код (напр. vaqrf3)" style="width: 200px; text-align: center; font-weight: bold; margin: 0; text-transform: uppercase;">
+                <button onclick="loadTestForEdit()" class="primary-btn" style="width: auto; margin: 0; background: #9b59b6;">Відкрити</button>
+            </div>
+        </div>
+
+        <div id="editor-ui" style="display: none;">
+            <div class="box">
+                <label>Назва курсу / тесту:</label>
+                <input type="text" id="e-title" maxlength="100" oninput="updateCounter(this, 100, 'title-count')" placeholder="Введіть назву...">
+                <div id="title-count" class="char-counter">Залишилось: 100</div>
+
+                <div class="code-banner">
+                    <div>
+                        <span style="font-size: 13px; color: #666;">Редагуємо тест із кодом:</span><br>
+                        <span id="e-code-display" class="code-text">...</span>
+                    </div>
+                </div>
             </div>
 
-        <button onclick="addQ()">+ Додати ще питання</button>
-        <button class="secondary-btn" style="background: #27ae60;" onclick="updateTest()">💾 Зберегти зміни</button>
-        <button class="secondary-btn" onclick="window.location.href='index.html'">Відміна</button>
+            <div id="q-list"></div>
+
+            <div style="display: flex; gap: 15px; margin-top: 20px;">
+                <button onclick="addQ()" class="secondary-btn" style="background: #9b59b6; color: white; flex: 1;">➕ Додати питання</button>
+                <button onclick="saveEditedTest()" id="save-btn" class="primary-btn" style="flex: 1; background: #27ae60;">💾 Зберегти зміни</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        if (localStorage.getItem('admin_authorized') !== 'true') {
-    alert("Доступ заборонено!");
-    window.location.href = 'index.html';
-}
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
+        if (localStorage.getItem('admin_authorized') !== 'true') window.location.href = 'index.html';
+
+        let activeCode = "";
+        const LIMITS = { q: 300, opt: 150 };
 
         async function loadTestForEdit() {
-            document.getElementById('current-code').innerText = code;
-            const res = await fetch(`/api/questions/${code}`);
-            const data = await res.json();
-            
-            document.getElementById('t-title').value = data.title;
-            const container = document.getElementById('q-list');
-            
-            data.questions.forEach(q => {
-                // Отримуємо повну відповідь з сервера через новий маршрут або JS фокус
-                addQ(q.text, ""); // Для повноцінного редагування нам потрібні відповіді
-            });
-            alert("Увага: Впишіть правильні відповіді заново для підтвердження змін.");
+            const codeInput = document.getElementById('target-code');
+            const code = codeInput.value.trim().toLowerCase();
+            if (!code) return alert("Введіть код!");
+
+            try {
+                const res = await fetch(`/api/questions/${code}?t=${Date.now()}`);
+                if (!res.ok) throw new Error("Тест не знайдено");
+                
+                const data = await res.json();
+                activeCode = code;
+
+                document.getElementById('e-title').value = data.title;
+                document.getElementById('e-code-display').innerText = code.toUpperCase();
+                
+                const qList = document.getElementById('q-list');
+                qList.innerHTML = "";
+
+                data.questions.forEach(q => renderQuestion(q));
+
+                document.getElementById('search-section').style.display = 'none';
+                document.getElementById('editor-ui').style.display = 'block';
+                updateCounter(document.getElementById('e-title'), 100, 'title-count');
+            } catch (e) {
+                alert("Помилка: Тест із кодом '" + code + "' не знайдено.");
+            }
         }
 
-        function addQ(text = "", ans = "") {
-    // Створюємо унікальний ID для кожного блоку питання, щоб легко його видалити
-    const qId = 'q-' + Date.now() + Math.random().toString(36).substr(2, 9);
-    
-    const html = `
-        <div class="q-item" id="${qId}" style="margin-top:15px; border-top:1px dashed #ccc; padding-top:10px; position: relative;">
-            <button type="button" onclick="removeQ('${qId}')" 
-                style="position: absolute; right: 0; top: 10px; background: #e74c3c; width: 30px; padding: 5px; font-size: 12px;">
-                ❌
-            </button>
-            <label>Текст питання:</label>
-            <input type="text" class="q-t" placeholder="Питання" value="${text}">
-            <label>Правильна відповідь:</label>
-            <input type="text" class="q-a" placeholder="Правильна відповідь" value="${ans}">
-        </div>`;
-    
-    document.getElementById('q-list').insertAdjacentHTML('beforeend', html);
-}
+        function updateCounter(el, limit, countId) {
+            const rem = limit - el.value.length;
+            const c = document.getElementById(countId);
+            if (c) {
+                c.innerText = `Залишилось: ${rem}`;
+                c.style.color = rem < 10 ? 'red' : '#888';
+            }
+        }
 
-// Функція для видалення блоку питання з екрана
-function removeQ(id) {
-    const element = document.getElementById(id);
-    if (element) {
-        element.remove();
-    }
-}
+        function renderQuestion(qData = null) {
+            // Генеруємо ID без крапок для нових питань
+            const qId = qData ? qData.id : (Date.now().toString() + Math.floor(Math.random() * 1000));
+            const text = qData ? qData.text : "";
+            const correct = qData ? qData.correct_ans : "";
+            const options = qData ? qData.options : [];
 
-        async function updateTest() {
-            const title = document.getElementById('t-title').value;
-            const qElements = document.getElementsByClassName('q-t');
-            const aElements = document.getElementsByClassName('q-a');
+            const html = `
+                <div class="q-item" id="q-${qId}">
+                    <button class="remove-q-btn" onclick="document.getElementById('q-${qId}').remove()">×</button>
+                    <label>📝 Текст запитання:</label>
+                    <input type="text" class="q-t" maxlength="${LIMITS.q}" 
+                           oninput="updateCounter(this, ${LIMITS.q}, 'cnt-q-${qId}')" value="${text}" placeholder="Введіть питання...">
+                    <div id="cnt-q-${qId}" class="char-counter"></div>
+
+                    <div class="options-box">
+                        <label><b>Варіанти відповідей:</b> (виберіть правильний)</label>
+                        <div id="opts-container-${qId}" style="margin-top: 10px;"></div>
+                        <button onclick="addOption('${qId}')" class="secondary-btn" style="width:auto; font-size:12px; margin-top:10px;">+ Додати варіант</button>
+                    </div>
+
+                    <div id="manual-box-${qId}" class="manual-ans-box">
+                        <label>⌨️ Впишіть правильну відповідь (якщо немає варіантів):</label>
+                        <input type="text" class="q-a-manual" maxlength="${LIMITS.opt}" value="${correct}" placeholder="Правильна відповідь...">
+                    </div>
+                </div>
+            `;
+            document.getElementById('q-list').insertAdjacentHTML('beforeend', html);
             
-            let updatedQuestions = [];
-            for(let i=0; i<qElements.length; i++) {
-                updatedQuestions.push({ text: qElements[i].value, correct_ans: aElements[i].value });
+            if (options && options.length > 0) {
+                options.forEach(optText => addOption(qId, optText, optText === correct));
+            }
+
+            // Використовуємо getElementById, щоб уникнути помилок з крапками в ID
+            const qBlock = document.getElementById(`q-${qId}`);
+            if (qBlock) {
+                const qInput = qBlock.querySelector('.q-t');
+                updateCounter(qInput, LIMITS.q, `cnt-q-${qId}`);
+            }
+            updateUI(qId);
+        }
+
+        function addOption(qId, text = "", isCorrect = false) {
+            const container = document.getElementById(`opts-container-${qId}`);
+            const optId = Math.random().toString(36).substr(2, 9);
+            const html = `
+                <div class="opt-row">
+                    <input type="radio" name="correct-${qId}" class="correct-radio" ${isCorrect ? 'checked' : ''}>
+                    <div class="opt-input-wrapper">
+                        <input type="text" class="opt-input" maxlength="${LIMITS.opt}" 
+                               oninput="updateCounter(this, ${LIMITS.opt}, 'cnt-opt-${optId}')" 
+                               value="${text}" placeholder="Текст варіанту...">
+                        <div id="cnt-opt-${optId}" class="char-counter"></div>
+                    </div>
+                    <button type="button" class="delete-opt-btn" onclick="this.parentElement.remove(); updateUI('${qId}');">🗑️</button>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+            
+            // Оновлюємо лічильник символів для нового поля без глобального querySelector
+            const lastRow = container.lastElementChild;
+            const newInput = lastRow.querySelector('.opt-input');
+            updateCounter(newInput, LIMITS.opt, `cnt-opt-${optId}`);
+            updateUI(qId);
+        }
+
+        function addQ() { renderQuestion(); }
+
+        function updateUI(qId) {
+            const opts = document.getElementById(`opts-container-${qId}`);
+            const manual = document.getElementById(`manual-box-${qId}`);
+            manual.style.display = opts.children.length > 0 ? 'none' : 'block';
+        }
+
+        async function saveEditedTest() {
+            const title = document.getElementById('e-title').value.trim();
+            const qBlocks = document.querySelectorAll('.q-item');
+
+            if (!title || qBlocks.length === 0) return alert("Заповніть назву та додайте питання!");
+
+            let questions = [];
+            for (let block of qBlocks) {
+                const text = block.querySelector('.q-t').value.trim();
+                const optRows = block.querySelectorAll('.opt-row');
+                let options = [], correct_ans = "";
+
+                if (optRows.length > 0) {
+                    let foundCorrect = false;
+                    optRows.forEach(row => {
+                        const val = row.querySelector('.opt-input').value.trim();
+                        if (val) {
+                            options.push(val);
+                            if (row.querySelector('.correct-radio').checked) {
+                                correct_ans = val;
+                                foundCorrect = true;
+                            }
+                        }
+                    });
+                    if (!foundCorrect) return alert("Позначте правильний варіант!");
+                } else {
+                    correct_ans = block.querySelector('.q-a-manual').value.trim();
+                }
+
+                if (!text || !correct_ans) return alert("Заповніть всі поля!");
+                
+                // Зберігаємо оригінальний ID (числовий або рядок з крапкою)
+                const rawId = block.id.replace('q-', '');
+                const cleanId = rawId.includes('.') ? rawId : parseFloat(rawId);
+
+                questions.push({ 
+                    id: cleanId, 
+                    text, 
+                    correct_ans, 
+                    options 
+                });
             }
 
             const res = await fetch('/api/update-test', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ code, title, questions: updatedQuestions })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: activeCode, title, questions })
             });
 
             if (res.ok) {
-                alert("Дані успішно оновлено!");
-                window.location.href = "index.html";
+                alert("Зміни збережено!");
+                window.location.href = 'index.html';
             }
         }
-
-        loadTestForEdit();
     </script>
 </body>
 </html>

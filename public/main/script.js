@@ -49,17 +49,7 @@ async function openAdmin() {
 async function openEditor() {
     // Тепер спочатку перевіряємо доступ через нашу функцію ensureAdminAccess
     if (await ensureAdminAccess()) {
-        const code = prompt("Введіть КОД тесту для редагування:").toUpperCase();
-        if (!code) return;
-
-        const check = await fetch(`/api/check-code/${code}`);
-        const data = await check.json();
-        
-        if (data.exists) {
-            window.location.href = `edit.html?code=${code}`;
-        } else {
-            alert("❌ Тест із таким кодом не знайдено!");
-        }
+        window.location.href = 'edit.html';
     }
 }
 
