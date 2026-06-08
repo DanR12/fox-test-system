@@ -208,7 +208,6 @@
         }
 
         function renderQuestion(qData = null) {
-            // Генеруємо ID без крапок для нових питань
             const qId = qData ? qData.id : (Date.now().toString() + Math.floor(Math.random() * 1000));
             const text = qData ? qData.text : "";
             const correct = qData ? qData.correct_ans : "";
@@ -223,7 +222,7 @@
                     <div id="cnt-q-${qId}" class="char-counter"></div>
 
                     <div class="options-box">
-                        <label><b>Варіанти відповідей:</b> (виберіть правильний)</label>
+                        <label><b>Варіанти відповідей:</b> (виберіть правильний крапкою)</label>
                         <div id="opts-container-${qId}" style="margin-top: 10px;"></div>
                         <button onclick="addOption('${qId}')" class="secondary-btn" style="width:auto; font-size:12px; margin-top:10px;">+ Додати варіант</button>
                     </div>
@@ -236,11 +235,14 @@
             `;
             document.getElementById('q-list').insertAdjacentHTML('beforeend', html);
             
+            // ВИПРАВЛЕНО: передаємо параметр порівняння (чи є цей варіант правильним)
             if (options && options.length > 0) {
-                options.forEach(optText => addOption(qId, optText, optText === correct));
+                options.forEach(optText => {
+                    const isItCorrect = (optText.trim() === correct.trim());
+                    addOption(qId, optText, isItCorrect);
+                });
             }
 
-            // Використовуємо getElementById, щоб уникнути помилок з крапками в ID
             const qBlock = document.getElementById(`q-${qId}`);
             if (qBlock) {
                 const qInput = qBlock.querySelector('.q-t');
@@ -266,7 +268,6 @@
             `;
             container.insertAdjacentHTML('beforeend', html);
             
-            // Оновлюємо лічильник символів для нового поля без глобального querySelector
             const lastRow = container.lastElementChild;
             const newInput = lastRow.querySelector('.opt-input');
             updateCounter(newInput, LIMITS.opt, `cnt-opt-${optId}`);
@@ -305,14 +306,13 @@
                             }
                         }
                     });
-                    if (!foundCorrect) return alert("Позначте правильний варіант!");
+                    if (!foundCorrect) return alert("Позначте правильний варіант у питанні: " + text);
                 } else {
                     correct_ans = block.querySelector('.q-a-manual').value.trim();
                 }
 
                 if (!text || !correct_ans) return alert("Заповніть всі поля!");
                 
-                // Зберігаємо оригінальний ID (числовий або рядок з крапкою)
                 const rawId = block.id.replace('q-', '');
                 const cleanId = rawId.includes('.') ? rawId : parseFloat(rawId);
 
